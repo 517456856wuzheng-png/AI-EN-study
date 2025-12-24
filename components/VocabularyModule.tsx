@@ -49,8 +49,6 @@ export const VocabularyModule: React.FC = () => {
     // Check if word already exists
     const existingIndex = wrongList.findIndex(w => w.id === word.id);
     if (existingIndex === -1) {
-      // Add new with a "priority" marker (we can use memoryTip or a specific property if we want, 
-      // but for now we'll just ensure it's in the list)
       wrongList.push({ ...word, memoryTip: `【重点复习】此前拼写错误。${word.memoryTip || ''}` });
     }
     
@@ -104,16 +102,16 @@ export const VocabularyModule: React.FC = () => {
     
     if (isCorrect) {
       setSpellingFeedback('CORRECT');
+      // Delay revealing the full content slightly to let the "Success Animation" play
       setTimeout(() => {
         setIsRevealed(true);
         setIsDetailVisible(true);
-      }, 600);
+      }, 400);
     } else {
       setSpellingFeedback('WRONG');
       saveToWrongBook(word);
       setShowWrongToast(true);
       
-      // Reset feedback after animation but keep toast for a bit longer
       setTimeout(() => {
         setSpellingFeedback('IDLE');
         setSpellingAttempt('');
@@ -188,6 +186,7 @@ export const VocabularyModule: React.FC = () => {
     const word = studyQueue[currentIndex];
     const progress = Math.round(((currentIndex + 1) / studyQueue.length) * 100);
     const isShowingActualContent = !isRecitationMode || isRevealed;
+    const isSuccessHighlight = isRevealed && spellingFeedback === 'CORRECT';
 
     return (
       <div className="p-4 max-w-lg mx-auto h-full flex flex-col">
@@ -203,6 +202,12 @@ export const VocabularyModule: React.FC = () => {
             to { transform: translateY(0); opacity: 1; }
           }
           .animate-slide-up-fade { animation: slideUpFade 0.3s ease-out forwards; }
+          @keyframes successPulse {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            70% { box-shadow: 0 0 0 20px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+          }
+          .animate-success-pulse { animation: successPulse 1.5s infinite; }
         `}</style>
         
         <div className="flex justify-between items-center mb-4">
@@ -225,7 +230,9 @@ export const VocabularyModule: React.FC = () => {
           <div className="bg-brand-500 h-1.5 rounded-full transition-all" style={{ width: `${progress}%` }}></div>
         </div>
 
-        <div className="bg-white rounded-3xl shadow-xl p-8 flex-1 flex flex-col items-center justify-center relative border border-gray-100 overflow-y-auto min-h-[400px]">
+        <div className={`bg-white rounded-3xl shadow-xl p-8 flex-1 flex flex-col items-center justify-center relative border transition-all duration-500 overflow-y-auto min-h-[400px] ${
+          isSuccessHighlight ? 'border-secondary-500 shadow-[0_0_30px_rgba(16,185,129,0.15)] bg-secondary-50/20' : 'border-gray-100 shadow-xl bg-white'
+        }`}>
             {showWrongToast && (
               <div className="absolute top-4 left-1/2 -translate-x-1/2 w-[80%] z-30 animate-slide-up-fade">
                  <div className="bg-red-500 text-white px-4 py-2 rounded-xl flex items-center gap-2 shadow-lg">
@@ -237,7 +244,14 @@ export const VocabularyModule: React.FC = () => {
 
             <div className="text-center w-full mb-4">
               {isShowingActualContent ? (
-                <h1 className="text-5xl font-black text-gray-900 mb-2 animate-scale-in tracking-tight">{word.spelling}</h1>
+                <div className="space-y-2">
+                   <div className="flex items-center justify-center gap-3">
+                      <h1 className={`text-5xl font-black mb-2 animate-scale-in tracking-tight transition-colors duration-500 ${isSuccessHighlight ? 'text-secondary-700' : 'text-gray-900'}`}>
+                        {word.spelling}
+                      </h1>
+                      {isSuccessHighlight && <CheckCircle className="text-secondary-500 animate-bounce" size={28} />}
+                   </div>
+                </div>
               ) : (
                 <div className="flex flex-col items-center gap-6">
                   <div className="flex gap-1 justify-center">
@@ -261,7 +275,7 @@ export const VocabularyModule: React.FC = () => {
                         onKeyDown={(e) => e.key === 'Enter' && handleSpellingCheck()}
                         placeholder="拼写该单词..."
                         className={`w-full p-4 text-center text-2xl font-black tracking-widest border-2 rounded-2xl outline-none transition-all ${
-                          spellingFeedback === 'CORRECT' ? 'border-secondary-500 bg-secondary-50 text-secondary-700' :
+                          spellingFeedback === 'CORRECT' ? 'border-secondary-500 bg-secondary-50 text-secondary-700 animate-success-pulse' :
                           spellingFeedback === 'WRONG' ? 'border-red-500 bg-red-50 text-red-700 animate-shake' :
                           'border-gray-200 focus:border-brand-500 shadow-inner bg-gray-50/30'
                         }`}
@@ -300,14 +314,18 @@ export const VocabularyModule: React.FC = () => {
 
             {isShowingActualContent && isDetailVisible ? (
               <div className="w-full space-y-5 animate-fade-in">
-                <div className="border-b border-gray-100 pb-4">
-                  <span className="inline-block font-black text-white bg-brand-500 px-2 py-0.5 rounded text-[10px] mr-2 uppercase">{word.partOfSpeech}</span>
-                  <span className="text-xl font-bold text-gray-800">{word.meaning}</span>
+                <div className={`border-b pb-4 transition-colors duration-500 ${isSuccessHighlight ? 'border-secondary-200' : 'border-gray-100'}`}>
+                  <span className={`inline-block font-black text-white px-2 py-0.5 rounded text-[10px] mr-2 uppercase transition-colors duration-500 ${isSuccessHighlight ? 'bg-secondary-500' : 'bg-brand-500'}`}>
+                    {word.partOfSpeech}
+                  </span>
+                  <span className={`text-xl font-bold transition-colors duration-500 ${isSuccessHighlight ? 'text-secondary-900' : 'text-gray-800'}`}>
+                    {word.meaning}
+                  </span>
                 </div>
                 
-                <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
-                   <p className="text-[10px] font-black text-blue-600 uppercase mb-1">真题还原</p>
-                   <p className="text-gray-700 italic text-sm italic">"{word.example}"</p>
+                <div className={`p-4 rounded-2xl border transition-all duration-500 ${isSuccessHighlight ? 'bg-secondary-100/30 border-secondary-200' : 'bg-blue-50 border-blue-100'}`}>
+                   <p className={`text-[10px] font-black uppercase mb-1 transition-colors duration-500 ${isSuccessHighlight ? 'text-secondary-600' : 'text-blue-600'}`}>真题还原</p>
+                   <p className={`italic text-sm transition-colors duration-500 ${isSuccessHighlight ? 'text-secondary-800' : 'text-gray-700'}`}>"{word.example}"</p>
                 </div>
 
                 {word.examTechnique && (
